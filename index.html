@@ -4,83 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XGrafics - Generador de Gráficos</title>
-    <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Carga de la fuente Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            /* Asegurar que el fondo sea blanco en modo claro */
+            background-color: #ffffff;
         }
-        /* Estilo para los color pickers */
-        input[type="color"] {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            width: 25px; /* Tamaño del cuadrado del color */
-            height: 25px;
-            background-color: transparent;
-            border: none;
-            cursor: pointer;
-            border-radius: 4px; /* Bordes redondeados */
-            padding: 0;
-            margin-left: 5px;
-            vertical-align: middle;
+        /* Estilos para asegurar que los elementos sean blancos en modo claro, replicando la segunda imagen */
+        .bg-gray-100 {
+            background-color: #ffffff; /* Override para el fondo principal */
         }
-        input[type="color"]::-webkit-color-swatch-wrapper {
-            padding: 0;
+        .bg-gray-50 {
+            background-color: #ffffff; /* Override para paneles y controles */
         }
-        input[type="color"]::-webkit-color-swatch {
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        .bg-gray-100 { /* Encabezado de la tabla */
+            background-color: #ffffff;
         }
-        input[type="color"]::-moz-color-swatch {
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        /* Asegurarse de que los bordes y textos sean visibles sobre blanco */
+        .text-gray-800, .text-gray-700, .text-gray-900 {
+            color: #374151; /* Mantener un gris oscuro para texto */
+        }
+        .border-gray-200, .border-gray-300 {
+            border-color: #e5e7eb; /* Bordes sutiles */
         }
     </style>
-    <!-- Código de AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1293967488755403"
-     crossorigin="anonymous"></script>
-    <!-- Enlace al archivo de manifiesto de la PWA -->
-    <link rel="manifest" href="manifest.json">
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- Carga de React y ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Carga de Babel para transformar JSX en el navegador (solo para desarrollo/prototipado) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Carga de Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-    <!-- Carga de las librerías jspdf y xlsx desde CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 
-    <script type="text/babel">
-        // Función auxiliar para generar un color RGB aleatorio con transparencia
-        const getRandomColor = () => {
-            const r = Math.floor(Math.random() * 255);
-            const g = Math.floor(Math.random() * 255);
-            const b = Math.floor(Math.random() * 255);
-            return `rgba(${r}, ${g}, ${b}, 0.6)`;
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // NUEVO: TU OBJETO firebaseConfig (¡PEGA AQUÍ LOS VALORES REALES DE TU CONSOLA DE FIREBASE!)
+        const firebaseConfig = {
+          apiKey: "AIzaSyCxJ4vvXZoZO2QiZdMA42-CF81gLvd1FNtPE", // Reemplaza con tu clave API
+          authDomain: "xgraficsdb.firebaseapp.com",
+          projectId: "xgraficsdb",
+          storageBucket: "xgraficsdb.appspot.com",
+          messagingSenderId: "668544641384",
+          appId: "1:668544641384:web:8d4ef488696c48aeb706dd",
+          // measurementId: "G-5D0GRGX8K4" // Opcional, solo si usas Google Analytics
         };
 
+        // Inicializar Firebase y obtener la instancia de Firestore
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        console.log("Firebase inicializado y Firestore disponible:", db);
+    </script>
+    <script type="text/babel">
         // Componente principal de la aplicación
         const App = () => {
-            // Colores predefinidos para las series del gráfico (se usan si no se especifican)
-            const initialChartColors = React.useMemo(() => [
-                'rgba(75, 192, 192, 0.6)', // Teal
-                'rgba(153, 102, 255, 0.6)', // Purple
-                'rgba(255, 159, 64, 0.6)', // Orange
-                'rgba(255, 99, 132, 0.6)', // Red
-                'rgba(54, 162, 235, 0.6)', // Blue
-                'rgba(201, 203, 207, 0.6)', // Grey
-                'rgba(255, 206, 86, 0.6)', // Yellow
-            ], []);
-
             // Estado para las filas de la tabla. Cada fila es un array de strings.
             const [tableData, setTableData] = React.useState([
                 ['Categoría A', '10', '20'],
@@ -88,36 +72,38 @@
                 ['Categoría C', '7', '18'],
             ]);
 
-            // Estado para los nombres de las columnas (series de datos) y sus colores
-            // La primera columna es siempre la etiqueta, las siguientes son series de datos.
-            const [columnNames, setColumnNames] = React.useState([
-                { id: 'label', name: 'Etiqueta', isLabel: true },
-                { id: 'serie1', name: 'Serie 1', color: initialChartColors[0] },
-                { id: 'serie2', name: 'Serie 2', color: initialChartColors[1] },
-            ]);
+            // Estado para los nombres de las columnas (series de datos)
+            const [columnNames, setColumnNames] = React.useState(['Etiqueta', 'Serie 1', 'Serie 2']);
 
             // Estado para el tipo de gráfico seleccionado
             const [chartType, setChartType] = React.useState('bar'); // 'bar', 'line', 'pie'
 
             // Estado para el título del gráfico
-            const [chartTitle, setChartTitle] = React.useState('Gráfico de Datos'); // Nuevo estado para el título
+            const [chartTitle, setChartTitle] = React.useState('Gráfico de Datos');
 
-            // Estado para el historial de gráficos (limitado a 15)
-            const MAX_HISTORY_ITEMS = 15; // Límite de elementos en el historial
-            const [chartHistory, setChartHistory] = React.useState(() => {
-                // Intentar cargar el historial desde localStorage al inicio
-                try {
-                    const savedHistory = localStorage.getItem('xgraficsHistory');
-                    return savedHistory ? JSON.parse(savedHistory) : [];
-                } catch (error) {
-                    console.error("Error al cargar el historial desde localStorage:", error);
-                    return [];
-                }
-            });
+            // Estado para el historial de gráficos (local, no se subirá a Firebase automáticamente)
+            const [chartHistory, setChartHistory] = React.useState([]);
+
+            // NUEVO: Estado para el código del gráfico que se mostrará o ingresará
+            const [graphCode, setGraphCode] = React.useState('');
+            // NUEVO: Estado para mensajes de feedback al usuario (éxito/error)
+            const [message, setMessage] = React.useState('');
+
 
             // Referencia para el elemento canvas donde se dibujará el gráfico
             const chartRef = React.useRef(null);
             const chartInstance = React.useRef(null); // Referencia a la instancia de Chart.js
+
+            // Colores para las series del gráfico
+            const chartColors = [
+                'rgba(75, 192, 192, 0.6)',
+                'rgba(153, 102, 255, 0.6)',
+                'rgba(255, 159, 64, 0.6)',
+                'rgba(255, 99, 132, 0.6)',
+                'rgba(54, 162, 235, 0.6)',
+                'rgba(201, 203, 207, 0.6)',
+                'rgba(255, 206, 86, 0.6)',
+            ];
 
             // Función para obtener los datos del gráfico a partir de tableData
             const getChartData = React.useCallback(() => {
@@ -125,13 +111,12 @@
 
                 // Extraer los datasets (series de datos) de las columnas restantes
                 const datasets = [];
-                for (let i = 1; i < columnNames.length; i++) { // Empezar desde la segunda columna (índice 1)
-                    const serie = columnNames[i];
+                for (let i = 1; i < columnNames.length; i++) {
                     datasets.push({
-                        label: serie.name,
+                        label: columnNames[i],
                         data: tableData.map(row => parseFloat(row[i]) || 0), // Convertir a número, si no es válido, usa 0
-                        backgroundColor: serie.color, // Usar el color definido en columnNames
-                        borderColor: serie.color.replace('0.6', '1'), // Un poco más oscuro para el borde
+                        backgroundColor: chartColors[i - 1] || 'rgba(0,0,0,0.6)', // Asignar color de la lista
+                        borderColor: chartColors[i - 1]?.replace('0.6', '1') || 'rgba(0,0,0,1)', // Un poco más oscuro para el borde
                         borderWidth: 1,
                     });
                 }
@@ -140,7 +125,7 @@
                     labels: labels,
                     datasets: datasets,
                 };
-            }, [tableData, columnNames]);
+            }, [tableData, columnNames, chartColors]);
 
             // Plugin de Chart.js para añadir la marca de agua "XGrafics"
             const watermarkPlugin = {
@@ -159,17 +144,8 @@
                 },
             };
 
-            // Efecto para guardar el historial en localStorage cada vez que cambie
-            React.useEffect(() => {
-                try {
-                    localStorage.setItem('xgraficsHistory', JSON.stringify(chartHistory));
-                } catch (error) {
-                    console.error("Error al guardar el historial en localStorage:", error);
-                }
-            }, [chartHistory]);
-
-            // Función para añadir el estado actual del gráfico al historial, incluyendo el formato de descarga
-            const addCurrentChartToHistory = React.useCallback((format) => {
+            // Función para añadir el estado actual del gráfico al historial local
+            const addCurrentChartToHistory = React.useCallback(() => {
                 if (chartRef.current) {
                     const imageUrl = chartRef.current.toDataURL('image/png'); // Capturar imagen para miniatura
                     const now = new Date();
@@ -177,20 +153,19 @@
                         id: now.getTime(), // ID único basado en el timestamp
                         type: chartType,
                         data: tableData, // Almacenar los datos de la tabla
-                        columnNames: columnNames, // Almacenar nombres de columnas (incluyendo colores)
+                        columnNames: columnNames, // Almacenar nombres de columnas
                         imageUrl: imageUrl, // URL de la imagen para la miniatura
                         timestamp: now.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }), // Fecha y hora
                         title: chartTitle, // Guardar el título actual del gráfico
-                        downloadFormat: format, // Guardar el formato de descarga
                     };
 
                     setChartHistory(prevHistory => {
-                        // Limitar el historial a MAX_HISTORY_ITEMS
-                        let updatedHistory = [...prevHistory]; // Copiar el array para evitar mutaciones directas
-                        if (updatedHistory.length >= MAX_HISTORY_ITEMS) {
-                            updatedHistory = updatedHistory.slice(1); // Eliminar el elemento más antiguo
+                        // Evitar añadir instantáneas idénticas rápidamente
+                        const lastItem = prevHistory[prevHistory.length - 1];
+                        if (lastItem && JSON.stringify(lastItem.data) === JSON.stringify(newHistoryItem.data) && lastItem.type === newHistoryItem.type && lastItem.title === newHistoryItem.title) {
+                            return prevHistory;
                         }
-                        return [...updatedHistory, newHistoryItem];
+                        return [...prevHistory, newHistoryItem];
                     });
                 }
             }, [chartType, tableData, columnNames, chartTitle]);
@@ -236,16 +211,20 @@
                     plugins: [watermarkPlugin], // Registrar el plugin de marca de agua
                 });
 
-                // NO SE AÑADE AL HISTORIAL AUTOMÁTICAMENTE AQUÍ. SOLO SE HACE AL DESCARGAR.
+                // Añadir al historial después de que el gráfico se haya actualizado/renderizado
+                // Un pequeño retraso para asegurar que la imagen esté disponible
+                const updateTimer = setTimeout(() => {
+                    addCurrentChartToHistory();
+                }, 150);
 
                 // Función de limpieza para destruir el gráfico al desmontar el componente
                 return () => {
+                    clearTimeout(updateTimer);
                     if (chartInstance.current) {
                         chartInstance.current.destroy();
                     }
                 };
-            }, [chartType, getChartData, chartTitle]); // Dependencias: tipo de gráfico, función de datos y título
-
+            }, [chartType, getChartData, addCurrentChartToHistory, chartTitle]); // Añadir chartTitle a las dependencias
 
             // --- Funciones para manipular la tabla ---
 
@@ -265,13 +244,7 @@
 
             // Añadir una nueva columna
             const addColumn = () => {
-                setColumnNames(prevNames => {
-                    // Generar un ID único y un color aleatorio para la nueva serie
-                    const newId = `serie${prevNames.length + 1}`;
-                    // Ciclar a través de colores predefinidos si hay más series que colores iniciales
-                    const newColor = initialChartColors[(prevNames.length - 1) % initialChartColors.length]; 
-                    return [...prevNames, { id: newId, name: `Serie ${prevNames.length}`, color: newColor }];
-                });
+                setColumnNames(prevNames => [...prevNames, `Serie ${prevNames.length}`]);
                 setTableData(prevData => prevData.map(row => [...row, ''])); // Añadir una celda vacía a cada fila existente
             };
 
@@ -300,23 +273,7 @@
             const handleColumnNameChange = (colIndex, value) => {
                 setColumnNames(prevNames => {
                     const newNames = [...prevNames];
-                    newNames[colIndex] = { ...newNames[colIndex], name: value }; // Actualiza solo el nombre
-                    return newNames;
-                });
-            };
-
-            // Manejar el cambio en el color de la columna
-            const handleColumnColorChange = (colIndex, value) => {
-                setColumnNames(prevNames => {
-                    const newNames = [...prevNames];
-                    // Mantener la transparencia (alpha) del color original si es RGBa, si no, añadir 0.6
-                    let finalColor = value;
-                    if (newNames[colIndex].color.startsWith('rgba(')) {
-                       finalColor = value + newNames[colIndex].color.substring(newNames[colIndex].color.lastIndexOf(',')).replace(')', '');
-                    } else {
-                        finalColor = value + '60'; // Añadir alpha 0.6 por defecto
-                    }
-                    newNames[colIndex] = { ...newNames[colIndex], color: finalColor }; // Actualiza solo el color
+                    newNames[colIndex] = value;
                     return newNames;
                 });
             };
@@ -324,14 +281,10 @@
             // Función para cargar un elemento del historial en el gráfico principal
             const loadHistoryItem = (item) => {
                 setTableData(item.data);
-                setColumnNames(item.columnNames); // Asegurarse de cargar la estructura completa
+                setColumnNames(item.columnNames);
                 setChartType(item.type);
                 setChartTitle(item.title); // Cargar el título desde el historial
-            };
-            
-            // Función para borrar un elemento específico del historial
-            const removeHistoryItem = (idToRemove) => {
-                setChartHistory(prevHistory => prevHistory.filter(item => item.id !== idToRemove));
+                setMessage(''); // Limpiar cualquier mensaje al cargar
             };
 
             // --- Funciones de descarga ---
@@ -342,11 +295,10 @@
                     const url = chartRef.current.toDataURL('image/png');
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = `${chartTitle.replace(/[^a-zA-Z0-9]/g, '_') || 'grafico'}_xgrafics.png`;
+                    link.download = `${chartTitle.replace(/[^a-zA-Z0-9]/g, '_') || 'grafico'}_xgrafics.png`; // Usa el título del gráfico para el nombre del archivo
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                    addCurrentChartToHistory('PNG'); // Añadir al historial con formato PNG
                 }
             };
 
@@ -363,30 +315,87 @@
                     const y = (pageHeight - imgHeight) / 2;
 
                     doc.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
-                    doc.save(`${chartTitle.replace(/[^a-zA-Z0-9]/g, '_') || 'grafico'}_xgrafics.pdf`);
-                    addCurrentChartToHistory('PDF'); // Añadir al historial con formato PDF
+                    doc.save(`${chartTitle.replace(/[^a-zA-Z0-9]/g, '_') || 'grafico'}_xgrafics.pdf`); // Usa el título del gráfico para el nombre del archivo
                 } else {
                     console.error("Error: jsPDF no está cargado o chartRef no está disponible.");
                 }
             };
 
-            // Descargar los datos de la tabla como archivo XLS (descarga directa)
+            // Descargar los datos de la tabla como archivo XLS (Excel)
             const downloadXLS = () => {
                 if (typeof window.XLSX !== 'undefined') {
                     const XLSX = window.XLSX;
-                    // Preparar los datos para XLS: nombres de columnas y luego los datos de la tabla
-                    const headerRow = columnNames.map(col => col.name);
-                    const dataToExport = [headerRow, ...tableData];
-                    
+                    const dataToExport = [columnNames, ...tableData];
                     const ws = XLSX.utils.aoa_to_sheet(dataToExport);
                     const wb = XLSX.utils.book_new();
                     XLSX.utils.book_append_sheet(wb, ws, "Datos");
-                    XLSX.writeFile(wb, `${chartTitle.replace(/[^a-zA-Z0-9]/g, '_') || 'datos'}_xgrafics.xlsx`);
-                    addCurrentChartToHistory('XLS'); // Añadir al historial con formato XLS
+                    XLSX.writeFile(wb, `${chartTitle.replace(/[^a-zA-Z0-9]/g, '_') || 'datos'}_xgrafics.xlsx`); // Usa el título del gráfico para el nombre del archivo
                 } else {
                     console.error("Error: XLSX no está cargado.");
                 }
             };
+
+            // NUEVO: Función para guardar el gráfico en Firestore y generar un código
+            const saveGraph = async () => {
+                setMessage(''); // Limpiar mensajes anteriores
+                if (db) { // Asegúrate de que db esté inicializado
+                    try {
+                        const graphDataToSave = {
+                            tableData: tableData,
+                            columnNames: columnNames,
+                            chartType: chartType,
+                            chartTitle: chartTitle,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp() // Para timestamp del servidor
+                        };
+
+                        // Añadir un nuevo documento a la colección 'graficos'
+                        const docRef = await db.collection("graficos").add(graphDataToSave);
+                        const generatedCode = docRef.id; // El ID del documento es nuestro código único
+
+                        setGraphCode(generatedCode);
+                        setMessage(`¡Gráfico guardado! Tu código es: ${generatedCode}`);
+                        // Puedes también añadir este gráfico al historial local si quieres, con su código.
+                        // addCurrentChartToHistory(); // Ya se añade automáticamente por el useEffect
+                    } catch (e) {
+                        console.error("Error al guardar el gráfico en Firestore: ", e);
+                        setMessage("Error al guardar el gráfico. Por favor, intenta de nuevo.");
+                    }
+                } else {
+                    setMessage("Error: Firebase no está inicializado.");
+                }
+            };
+
+            // NUEVO: Función para cargar un gráfico desde Firestore usando un código
+            const loadGraphByCode = async () => {
+                setMessage(''); // Limpiar mensajes anteriores
+                if (!graphCode.trim()) {
+                    setMessage("Por favor, introduce un código de gráfico.");
+                    return;
+                }
+                if (db) { // Asegúrate de que db esté inicializado
+                    try {
+                        const docRef = db.collection("graficos").doc(graphCode.trim());
+                        const doc = await docRef.get();
+
+                        if (doc.exists) {
+                            const loadedData = doc.data();
+                            setTableData(loadedData.tableData || []);
+                            setColumnNames(loadedData.columnNames || ['Etiqueta', 'Serie 1', 'Serie 2']);
+                            setChartType(loadedData.chartType || 'bar');
+                            setChartTitle(loadedData.chartTitle || 'Gráfico Cargado');
+                            setMessage("Gráfico cargado exitosamente.");
+                        } else {
+                            setMessage("No se encontró ningún gráfico con ese código.");
+                        }
+                    } catch (e) {
+                        console.error("Error al cargar el gráfico desde Firestore: ", e);
+                        setMessage("Error al cargar el gráfico. Asegúrate de que el código sea correcto.");
+                    }
+                } else {
+                    setMessage("Error: Firebase no está inicializado.");
+                }
+            };
+
 
             return (
                 <div className="min-h-screen bg-gray-100 p-4 flex flex-col items-center font-sans">
@@ -433,33 +442,23 @@
                                 <table className="min-w-full divide-y divide-gray-200 bg-white">
                                     <thead className="bg-gray-100">
                                         <tr>
-                                            {columnNames.map((col, colIndex) => (
+                                            {columnNames.map((name, colIndex) => (
                                                 <th
                                                     key={colIndex}
-                                                    className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
                                                 >
-                                                    <div className="flex items-center justify-between">
-                                                        {/* La primera columna es etiqueta, las demás series de datos */}
-                                                        {col.isLabel ? (
-                                                            <span>{col.name}</span>
-                                                        ) : (
-                                                            <>
-                                                                <input
-                                                                    type="text"
-                                                                    value={col.name}
-                                                                    onChange={(e) => handleColumnNameChange(colIndex, e.target.value)}
-                                                                    className="w-full bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 py-1"
-                                                                    aria-label={`Nombre de columna ${colIndex}`}
-                                                                />
-                                                                <input
-                                                                    type="color"
-                                                                    value={col.color.substring(0, 7)} /* Solo el RGB, no el alpha */
-                                                                    onChange={(e) => handleColumnColorChange(colIndex, e.target.value)} /* Eliminar la adición de '60' aquí */
-                                                                    aria-label={`Color de columna ${colIndex}`}
-                                                                />
-                                                            </>
-                                                        )}
-                                                    </div>
+                                                    {/* La primera columna no se puede editar su nombre directamente */}
+                                                    {colIndex === 0 ? (
+                                                        name
+                                                    ) : (
+                                                        <input
+                                                            type="text"
+                                                            value={name}
+                                                            onChange={(e) => handleColumnNameChange(colIndex, e.target.value)}
+                                                            className="w-full bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 py-1"
+                                                            aria-label={`Nombre de columna ${colIndex}`}
+                                                        />
+                                                    )}
                                                 </th>
                                             ))}
                                         </tr>
@@ -553,6 +552,59 @@
                                     Descargar XLS
                                 </button>
                             </div>
+
+                            {/* NUEVO: Sección para guardar y cargar gráficos por código */}
+                            <div className="p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-200">
+                                <h3 className="text-lg font-semibold text-gray-700 mb-3">Compartir Gráfico por Código</h3>
+                                <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                                    <button
+                                        onClick={saveGraph}
+                                        className="w-full sm:w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105"
+                                    >
+                                        Guardar Gráfico y Obtener Código
+                                    </button>
+                                    <div className="w-full sm:w-1/2 flex items-center bg-gray-200 rounded-md p-2">
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={graphCode}
+                                            placeholder="Tu código de gráfico aparecerá aquí"
+                                            className="w-full bg-transparent text-gray-800 font-mono text-center truncate focus:outline-none"
+                                        />
+                                        {graphCode && (
+                                            <button
+                                                onClick={() => navigator.clipboard.writeText(graphCode).then(() => setMessage('Código copiado al portapapeles!'))}
+                                                className="ml-2 px-3 py-1 bg-gray-300 hover:bg-gray-400 rounded-md text-gray-700 text-sm"
+                                                title="Copiar código"
+                                            >
+                                                Copiar
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                    <input
+                                        type="text"
+                                        value={graphCode}
+                                        onChange={(e) => setGraphCode(e.target.value)}
+                                        placeholder="Introduce un código para cargar"
+                                        className="w-full sm:w-2/3 mt-1 block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm"
+                                        aria-label="Introducir código de gráfico"
+                                    />
+                                    <button
+                                        onClick={loadGraphByCode}
+                                        className="w-full sm:w-1/3 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105"
+                                    >
+                                        Cargar Gráfico
+                                    </button>
+                                </div>
+                                {message && (
+                                    <p className="mt-3 text-sm text-center font-medium text-gray-700">
+                                        {message}
+                                    </p>
+                                )}
+                            </div>
+                            {/* FIN NUEVO */}
                         </div>
                     </div>
 
@@ -560,14 +612,13 @@
                     <div className="w-full max-w-6xl bg-white rounded-lg shadow-xl p-6 mt-6 mb-6">
                         <h2 className="text-2xl font-semibold text-gray-700 mb-4">Historial de Gráficos</h2>
                         {chartHistory.length === 0 ? (
-                            <p className="text-gray-500">No hay gráficos en el historial aún. Se añadirán al descargar.</p>
+                            <p className="text-gray-500">No hay gráficos en el historial aún. Edita la tabla o cambia el tipo de gráfico para añadir uno.</p>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {chartHistory.map(item => (
                                     <div key={item.id} className="border border-gray-200 rounded-lg p-2 flex flex-col items-center justify-between text-center">
                                         <img src={item.imageUrl} alt={`Gráfico ${item.type} del ${item.timestamp}`} className="w-full h-32 object-contain mb-2 rounded-md border border-gray-100"/>
                                         <p className="text-sm font-medium text-gray-800">{item.title} ({item.type.charAt(0).toUpperCase() + item.type.slice(1)})</p>
-                                        <p className="text-xs text-gray-500 mb-1">Descargado como: {item.downloadFormat}</p> {/* Muestra el formato de descarga */}
                                         <p className="text-xs text-gray-500 mb-2">{item.timestamp}</p>
                                         <button
                                             onClick={() => loadHistoryItem(item)}
@@ -576,10 +627,17 @@
                                             Cargar Gráfico
                                         </button>
                                         <button
-                                            onClick={() => removeHistoryItem(item.id)}
-                                            className="w-full bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-md transition duration-200"
+                                            onClick={() => {
+                                                const link = document.createElement('a');
+                                                link.href = item.imageUrl;
+                                                link.download = `historial_${item.title.replace(/[^a-zA-Z0-9]/g, '_') || 'grafico'}_${item.timestamp.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                document.body.removeChild(link);
+                                            }}
+                                            className="w-full bg-purple-500 hover:bg-purple-600 text-white text-sm py-1 px-3 rounded-md transition duration-200"
                                         >
-                                            Eliminar del Historial
+                                            Descargar PNG Historial
                                         </button>
                                     </div>
                                 ))}
@@ -589,19 +647,6 @@
                 </div>
             );
         };
-
-        // Service Worker Registration
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('service-worker.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
-            });
-        }
 
         // Renderiza el componente React en el elemento con id 'root'
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
